@@ -1,0 +1,822 @@
+
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DropZone | Modern File Upload</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+        }
+        .upload-zone {
+            border: 3px dashed #3b82f6;
+            transition: all 0.3s ease;
+        }
+        .upload-zone:hover, .upload-zone.active {
+            border-color: #2563eb;
+            background-color: rgba(219, 234, 254, 0.5);
+        }
+        .file-item {
+            animation: fadeIn 0.5s ease;
+            transition: all 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .file-item.fade-out {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(40px);
+            z-index: -1;
+            animation: float 8s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(15px, -15px) scale(1.05); }
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .gallery-item {
+            transition: all 0.3s ease;
+        }
+        .gallery-item:hover {
+            transform: scale(1.03);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .nav-link {
+            position: relative;
+        }
+        .nav-link.active {
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #1d4ed8;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Decorative blobs -->
+    <div class="blob bg-blue-300/30 w-64 h-64 top-0 left-0"></div>
+    <div class="blob bg-blue-400/20 w-96 h-96 bottom-0 right-0"></div>
+    
+    <header class="container mx-auto py-6 px-4">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <h1 class="text-2xl font-bold text-blue-600">DropZone</h1>
+            </div>
+            <nav>
+                <ul class="flex gap-6">
+                    <li><a href="#" class="nav-link active text-blue-600 hover:text-blue-800 font-medium" data-page="home">หน้าหลัก</a></li>
+                    <li><a href="#" class="nav-link text-blue-600 hover:text-blue-800 font-medium" data-page="myfiles">ไฟล์ของฉัน</a></li>
+                    <li><a href="#" class="nav-link text-blue-600 hover:text-blue-800 font-medium" data-page="gallery">แกลเลอรี่</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto flex-grow px-4 py-8">
+        <!-- Home Page -->
+        <div id="home-page" class="page active max-w-3xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-blue-700 mb-2">อัพโหลดไฟล์และรูปภาพ</h2>
+                <p class="text-gray-600">ลากและวางไฟล์ หรือคลิกเพื่อเลือกไฟล์ที่ต้องการอัพโหลด</p>
+            </div>
+
+            <div id="upload-zone" class="upload-zone bg-white rounded-xl p-8 shadow-lg mb-8 text-center cursor-pointer relative overflow-hidden">
+                <div class="absolute inset-0 bg-blue-50 opacity-50 z-0"></div>
+                <div class="relative z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-blue-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <h3 class="text-xl font-semibold text-blue-700 mb-2">ลากและวางไฟล์ที่นี่</h3>
+                    <p class="text-gray-500 mb-4">หรือคลิกเพื่อเลือกไฟล์</p>
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-full transition-all shadow-md hover:shadow-lg">
+                        เลือกไฟล์
+                    </button>
+                    <input type="file" id="file-input" multiple class="hidden" />
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-lg">
+                <h3 class="text-xl font-semibold text-blue-700 mb-4">ไฟล์ที่อัพโหลด</h3>
+                <div id="file-list" class="space-y-4">
+                    <!-- Files will be added here dynamically -->
+                </div>
+
+                <div id="no-uploads-message" class="py-8 text-center text-gray-500" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                    <p>ยังไม่มีไฟล์ที่รอการอัพโหลด</p>
+                </div>
+
+                <div class="mt-6 flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                        <span id="storage-used">0 MB</span> จาก <span>1 GB</span> ที่ใช้ไป
+                    </div>
+                    <button id="upload-all" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-full transition-all shadow-md hover:shadow-lg flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        อัพโหลดทั้งหมด
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Files Page -->
+        <div id="myfiles-page" class="page max-w-4xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-blue-700 mb-2">ไฟล์ของฉัน</h2>
+                <p class="text-gray-600">จัดการไฟล์ทั้งหมดของคุณ</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-lg">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <input type="text" id="file-search" placeholder="ค้นหาไฟล์..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <select id="file-type-filter" class="ml-4 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="all">ทั้งหมด</option>
+                            <option value="image">รูปภาพ</option>
+                            <option value="document">เอกสาร</option>
+                            <option value="other">อื่นๆ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button id="sort-files-btn" class="bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium py-2 px-4 rounded-lg transition-all flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                            </svg>
+                            เรียงลำดับ
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อไฟล์</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ประเภท</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ขนาด</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">วันที่อัพโหลด</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="files-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Files will be added here dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="no-files-message" class="py-8 text-center text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                    <p>ยังไม่มีไฟล์ที่อัพโหลด</p>
+                    <button class="mt-3 text-blue-600 hover:text-blue-800 font-medium" id="go-to-upload">อัพโหลดไฟล์เลย</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gallery Page -->
+        <div id="gallery-page" class="page max-w-6xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-blue-700 mb-2">แกลเลอรี่รูปภาพ</h2>
+                <p class="text-gray-600">ดูรูปภาพทั้งหมดที่คุณอัพโหลด</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-lg">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <input type="text" id="image-search" placeholder="ค้นหารูปภาพ..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="upload-image-btn" class="bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium py-2 px-4 rounded-lg transition-all flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            อัพโหลดรูปภาพ
+                        </button>
+                    </div>
+                </div>
+
+                <div id="gallery-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Images will be added here dynamically -->
+                </div>
+
+                <div id="no-images-message" class="py-8 text-center text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p>ยังไม่มีรูปภาพที่อัพโหลด</p>
+                    <button class="mt-3 text-blue-600 hover:text-blue-800 font-medium" id="go-to-upload-image">อัพโหลดรูปภาพเลย</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Image Preview Modal -->
+    <div id="image-modal" class="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center hidden">
+        <div class="relative max-w-4xl w-full mx-4">
+            <button id="close-modal" class="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <img id="modal-image" src="" alt="Preview" class="max-h-[80vh] mx-auto rounded-lg shadow-2xl">
+            <div class="text-white text-center mt-4">
+                <h3 id="modal-filename" class="text-xl font-medium"></h3>
+                <p id="modal-filesize" class="text-sm opacity-75 mt-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white py-6 mt-12">
+        <div class="container mx-auto px-4 text-center text-gray-500">
+            <p>© 2023 DropZone - บริการอัพโหลดไฟล์และรูปภาพ</p>
+        </div>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        const uploadAllBtn = document.getElementById('upload-all');
+        const storageUsed = document.getElementById('storage-used');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page');
+        const filesTableBody = document.getElementById('files-table-body');
+        const noFilesMessage = document.getElementById('no-files-message');
+        const galleryContainer = document.getElementById('gallery-container');
+        const noImagesMessage = document.getElementById('no-images-message');
+        const goToUpload = document.getElementById('go-to-upload');
+        const goToUploadImage = document.getElementById('go-to-upload-image');
+        const imageModal = document.getElementById('image-modal');
+        const modalImage = document.getElementById('modal-image');
+        const modalFilename = document.getElementById('modal-filename');
+        const modalFilesize = document.getElementById('modal-filesize');
+        const closeModal = document.getElementById('close-modal');
+        const noUploadsMessage = document.getElementById('no-uploads-message');
+        const fileSearch = document.getElementById('file-search');
+        const fileTypeFilter = document.getElementById('file-type-filter');
+        const imageSearch = document.getElementById('image-search');
+        const uploadImageBtn = document.getElementById('upload-image-btn');
+        const sortFilesBtn = document.getElementById('sort-files-btn');
+
+        // Initialize localStorage if needed
+        if (!localStorage.getItem('uploadedFiles')) {
+            localStorage.setItem('uploadedFiles', JSON.stringify([]));
+        }
+
+        // Navigation
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetPage = link.getAttribute('data-page');
+                
+                // Update active link
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                
+                // Show target page
+                pages.forEach(page => {
+                    page.classList.remove('active');
+                    if (page.id === `${targetPage}-page`) {
+                        page.classList.add('active');
+                    }
+                });
+                
+                // If navigating to files or gallery, refresh the content
+                if (targetPage === 'myfiles') {
+                    renderFilesTable();
+                } else if (targetPage === 'gallery') {
+                    renderGallery();
+                } else if (targetPage === 'home') {
+                    checkForPendingUploads();
+                }
+            });
+        });
+
+        // Go to upload buttons
+        goToUpload.addEventListener('click', () => {
+            navigateToPage('home');
+        });
+        
+        goToUploadImage.addEventListener('click', () => {
+            navigateToPage('home');
+        });
+
+        uploadImageBtn.addEventListener('click', () => {
+            navigateToPage('home');
+        });
+
+        function navigateToPage(page) {
+            navLinks.forEach(link => {
+                if (link.getAttribute('data-page') === page) {
+                    link.click();
+                }
+            });
+        }
+
+        // Handle drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            uploadZone.classList.add('active');
+        }
+        
+        function unhighlight() {
+            uploadZone.classList.remove('active');
+        }
+        
+        // Handle file selection
+        uploadZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', handleFiles);
+        uploadZone.addEventListener('drop', handleDrop);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles({ target: { files } });
+        }
+        
+        function handleFiles(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            
+            const uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+            
+            [...files].forEach(file => {
+                // Read file as data URL for preview
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const fileData = {
+                        id: generateUniqueId(),
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        date: new Date().toISOString(),
+                        dataUrl: event.target.result
+                    };
+                    
+                    // Add to localStorage
+                    uploadedFiles.push(fileData);
+                    localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+                    
+                    // Create file item in UI
+                    createFileItem(fileData);
+                    
+                    // Update storage used
+                    updateStorageUsed();
+                    
+                    // Hide no uploads message if it's showing
+                    noUploadsMessage.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function createFileItem(fileData) {
+            // Create file item
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item flex items-center p-3 bg-blue-50 rounded-lg';
+            fileItem.dataset.id = fileData.id;
+            
+            // Determine icon based on file type
+            let iconPath = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />`;
+            
+            if (fileData.type.startsWith('image/')) {
+                iconPath = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />`;
+            }
+            
+            // Format file size
+            const fileSize = formatFileSize(fileData.size);
+            
+            fileItem.innerHTML = `
+                <div class="bg-blue-100 p-2 rounded-lg mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        ${iconPath}
+                    </svg>
+                </div>
+                <div class="flex-grow">
+                    <div class="flex justify-between">
+                        <span class="font-medium text-gray-800">${fileData.name}</span>
+                        <span class="text-sm text-gray-500">${fileSize}</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div class="bg-blue-600 h-2 rounded-full progress-bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <button class="ml-3 text-gray-400 hover:text-red-500 delete-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            `;
+            
+            fileList.prepend(fileItem);
+            
+            // Add delete functionality
+            fileItem.querySelector('.delete-btn').addEventListener('click', () => {
+                deleteFile(fileData.id);
+                fileItem.classList.add('fade-out');
+                setTimeout(() => {
+                    fileItem.remove();
+                    updateStorageUsed();
+                    checkForPendingUploads();
+                }, 300);
+            });
+        }
+        
+        function deleteFile(id) {
+            let files = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+            files = files.filter(file => file.id !== id);
+            localStorage.setItem('uploadedFiles', JSON.stringify(files));
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+        
+        function updateStorageUsed() {
+            const files = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+            const totalBytes = files.reduce((total, file) => total + file.size, 0);
+            storageUsed.textContent = formatFileSize(totalBytes);
+        }
+        
+        function generateUniqueId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+        
+        // Check if there are any pending uploads
+        function checkForPendingUploads() {
+            if (fileList.children.length === 0) {
+                noUploadsMessage.style.display = 'block';
+            } else {
+                noUploadsMessage.style.display = 'none';
+            }
+        }
+        
+        // Upload all button animation and functionality
+        uploadAllBtn.addEventListener('click', () => {
+            // If there are no files to upload, do nothing
+            if (fileList.children.length === 0) return;
+            
+            uploadAllBtn.classList.add('bg-green-600');
+            uploadAllBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                อัพโหลดสำเร็จ
+            `;
+            
+            // Add fade-out animation to all file items
+            const fileItems = document.querySelectorAll('.file-item');
+            fileItems.forEach(item => {
+                item.classList.add('fade-out');
+            });
+            
+            // After animation completes, clear the file list
+            setTimeout(() => {
+                fileList.innerHTML = '';
+                noUploadsMessage.style.display = 'block';
+                
+                // Reset the upload button
+                setTimeout(() => {
+                    uploadAllBtn.classList.remove('bg-green-600');
+                    uploadAllBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        อัพโหลดทั้งหมด
+                    `;
+                }, 2000);
+            }, 500);
+        });
+
+        // Render files table
+        function renderFilesTable() {
+            const files = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+            filesTableBody.innerHTML = '';
+            
+            if (files.length === 0) {
+                noFilesMessage.style.display = 'block';
+                return;
+            }
+            
+            noFilesMessage.style.display = 'none';
+            
+            // Apply search filter
+            let filteredFiles = files;
+            const searchTerm = fileSearch.value.toLowerCase();
+            if (searchTerm) {
+                filteredFiles = filteredFiles.filter(file => 
+                    file.name.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Apply type filter
+            const typeFilter = fileTypeFilter.value;
+            if (typeFilter !== 'all') {
+                filteredFiles = filteredFiles.filter(file => {
+                    if (typeFilter === 'image') return file.type.startsWith('image/');
+                    if (typeFilter === 'document') return file.type.includes('pdf') || file.type.includes('word') || file.type.includes('document');
+                    if (typeFilter === 'other') return !file.type.startsWith('image/') && !file.type.includes('pdf') && !file.type.includes('word') && !file.type.includes('document');
+                    return true;
+                });
+            }
+            
+            filteredFiles.forEach(file => {
+                const row = document.createElement('tr');
+                
+                // Format date
+                const date = new Date(file.date);
+                const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                
+                // Get file type display name
+                let fileType = 'ไฟล์';
+                if (file.type.startsWith('image/')) {
+                    fileType = 'รูปภาพ';
+                } else if (file.type.includes('pdf')) {
+                    fileType = 'PDF';
+                } else if (file.type.includes('word') || file.type.includes('document')) {
+                    fileType = 'เอกสาร';
+                }
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                ${file.type.startsWith('image/') ? 
+                                    `<img src="${file.dataUrl}" alt="${file.name}" class="h-8 w-8 rounded object-cover">` :
+                                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>`
+                                }
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">${file.name}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${fileType}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${formatFileSize(file.size)}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${formattedDate}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div class="flex justify-end gap-2">
+                            ${file.type.startsWith('image/') ? 
+                                `<button class="text-blue-600 hover:text-blue-900 view-btn" data-id="${file.id}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>` : ''
+                            }
+                            <button class="text-blue-600 hover:text-blue-900 download-btn" data-id="${file.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                            </button>
+                            <button class="text-red-600 hover:text-red-900 delete-file-btn" data-id="${file.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                filesTableBody.appendChild(row);
+            });
+            
+            // Add event listeners to buttons
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const fileId = btn.getAttribute('data-id');
+                    viewFile(fileId);
+                });
+            });
+            
+            document.querySelectorAll('.download-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const fileId = btn.getAttribute('data-id');
+                    downloadFile(fileId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-file-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const fileId = btn.getAttribute('data-id');
+                    deleteFile(fileId);
+                    renderFilesTable();
+                    updateStorageUsed();
+                });
+            });
+        }
+
+        // Render gallery
+        function renderGallery() {
+            const files = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+            let imageFiles = files.filter(file => file.type.startsWith('image/'));
+            
+            galleryContainer.innerHTML = '';
+            
+            if (imageFiles.length === 0) {
+                noImagesMessage.style.display = 'block';
+                return;
+            }
+            
+            noImagesMessage.style.display = 'none';
+            
+            // Apply search filter
+            const searchTerm = imageSearch.value.toLowerCase();
+            if (searchTerm) {
+                imageFiles = imageFiles.filter(file => 
+                    file.name.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            imageFiles.forEach(file => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item relative rounded-lg overflow-hidden shadow-md';
+                galleryItem.dataset.id = file.id;
+                
+                galleryItem.innerHTML = `
+                    <img src="${file.dataUrl}" alt="${file.name}" class="w-full h-48 object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                        <h3 class="text-white font-medium truncate">${file.name}</h3>
+                        <p class="text-white/80 text-sm">${formatFileSize(file.size)}</p>
+                        <div class="flex gap-2 mt-2">
+                            <button class="bg-white/20 hover:bg-white/30 p-1.5 rounded-full view-gallery-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </button>
+                            <button class="bg-white/20 hover:bg-white/30 p-1.5 rounded-full download-gallery-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                            </button>
+                            <button class="bg-white/20 hover:bg-white/30 p-1.5 rounded-full delete-gallery-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                galleryContainer.appendChild(galleryItem);
+                
+                // Add event listeners
+                galleryItem.querySelector('.view-gallery-btn').addEventListener('click', () => {
+                    viewFile(file.id);
+                });
+                
+                galleryItem.querySelector('.download-gallery-btn').addEventListener('click', () => {
+                    downloadFile(file.id);
+                });
+                
+                galleryItem.querySelector('.delete-gallery-btn').addEventListener('click', () => {
+                    deleteFile(file.id);
+                    renderGallery();
+                    updateStorageUsed();
+                });
+                
+                // Also make the image clickable
+                galleryItem.querySelector('img').addEventListener('click', () => {
+                    viewFile(file.id);
+                });
+            });
+        }
+
+        // View file in modal
+        function viewFile(id) {
+            const files = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+            const file = files.find(f => f.id === id);
+            
+            if (file && file.type.startsWith('image/')) {
+                modalImage.src = file.dataUrl;
+                modalFilename.textContent = file.name;
+                modalFilesize.textContent = formatFileSize(file.size);
+                imageModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        // Download file
+        function downloadFile(id) {
+            const files = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+            const file = files.find(f => f.id === id);
+            
+            if (file) {
+                const link = document.createElement('a');
+                link.href = file.dataUrl;
+                link.download = file.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // Close modal
+        closeModal.addEventListener('click', () => {
+            imageModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        });
+
+        // Close modal when clicking outside
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) {
+                imageModal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+
+        // Search and filter functionality
+        fileSearch.addEventListener('input', renderFilesTable);
+        fileTypeFilter.addEventListener('change', renderFilesTable);
+        imageSearch.addEventListener('input', renderGallery);
+
+        // Sort files
+        let sortAscending = true;
+        sortFilesBtn.addEventListener('click', () => {
+            sortAscending = !sortAscending;
+            renderFilesTable();
+        });
+
+        // Initialize
+        updateStorageUsed();
+        checkForPendingUploads();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'949366cb008d50cb',t:'MTc0ODgzMDA5Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
